@@ -92,7 +92,7 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f"Created message, message ID: {message.id}")
 
     # Run the agent
-    run = project_client.agents.create_run(thread_id=thread.id, assistant_id=agent.id)
+    run = project_client.agents.create_run(thread_id=thread.id, agent_id=agent.id)
     # Monitor and process the run status
     while run.status in ["queued", "in_progress", "requires_action"]:
         time.sleep(1)
@@ -106,15 +106,18 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     if run.status == "failed":
         logging.error(f"Run failed: {run.last_error}")
 
-    # Get messages from the assistant thread
-    messages = project_client.agents.get_messages(thread_id=thread.id)
+
+    messages = project_client.agents.list_messages(thread_id=thread.id)
     logging.info(f"Messages: {messages}")
 
-    # Get the last message from the assistant
-    last_msg = messages.get_last_text_message_by_sender("assistant")
-    if last_msg:
-        logging.info(f"Last Message: {last_msg.text.value}")
-
+    # Get the last message from the agent
+    last_msg = None
+    for data_point in messages.data:
+        if data_point.role == "assistant":
+            last_msg = data_point.content[-1]
+            logging.info(f"Last Message: {last_msg.text.value}")
+            break
+ 
     # Delete the agent once done
     project_client.agents.delete_agent(agent.id)
     print("Deleted agent")
