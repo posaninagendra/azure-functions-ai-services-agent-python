@@ -123,18 +123,10 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
 
 # Function to get the weather
 @app.function_name(name="GetWeather")
-@app.queue_trigger(arg_name="msg", queue_name="input", connection="STORAGE_CONNECTION")  
-def process_queue_message(msg: func.QueueMessage) -> None:
+@app.queue_output(arg_name="outputQueueItem",  queue_name=output_queue_name, connection="STORAGE_CONNECTION")
+@app.queue_trigger(arg_name="msg", queue_name=input_queue_name, connection="STORAGE_CONNECTION") 
+def process_queue_message(msg: func.QueueMessage,  outputQueueItem: func.Out[str]) -> None:
     logging.info('Python queue trigger function processed a queue item')
-
-    # Queue to send message to
-    queue_client = QueueClient(
-        os.environ["STORAGE_CONNECTION__queueServiceUri"],
-        queue_name="output",
-        credential=DefaultAzureCredential(),
-        message_encode_policy=BinaryBase64EncodePolicy(),
-        message_decode_policy=BinaryBase64DecodePolicy()
-    )
 
     messagepayload = json.loads(msg.get_body().decode('utf-8'))
     location = messagepayload['location']
@@ -145,6 +137,6 @@ def process_queue_message(msg: func.QueueMessage) -> None:
         'Value': 'Weather is 74 degrees and sunny in ' + location,
         'CorrelationId': correlation_id
     }
-    queue_client.send_message(json.dumps(result_message).encode('utf-8'))
+    outputQueueItem.set(json.dumps(result_message).encode('utf-8'))
 
     logging.info(f"Sent message to queue: {input_queue_name} with message {result_message}")

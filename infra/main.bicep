@@ -6,13 +6,14 @@ param environmentName string
 
 @minLength(1)
 @description('Primary location for all resources')
-@allowed(['eastus', 'westus2'])
+@allowed(['australiaeast', 'eastus', 'eastus2', 'southcentralus', 'southeastasia', 'uksouth'])
 @metadata({
   azd: {
     type: 'location'
   }
 })
-param location string = 'eastus'
+
+param location string
 
 @description('Skip the creation of the virtual network and private endpoint')
 param skipVnet bool = true
@@ -88,9 +89,6 @@ param modelSkuName string = 'GlobalStandard'
 
 @description('Model deployment capacity')
 param modelCapacity int = 50
-
-@description('Model deployment location. If you want to deploy an Azure AI resource/model in different location than the rest of the resources created.')
-param modelLocation string = 'eastus'
 
 @description('The AI Service Account full ARM Resource ID. This is an optional field, and if not provided, the resource will be created.')
 param aiServiceAccountResourceId string = ''
@@ -193,7 +191,7 @@ module aiDependencies './agent/standard-dependent-resources.bicep' = {
      modelVersion: modelVersion
      modelSkuName: modelSkuName
      modelCapacity: modelCapacity  
-     modelLocation: modelLocation
+     modelLocation: location
 
      aiServiceAccountResourceId: aiServiceAccountResourceId
      aiSearchServiceResourceId: aiSearchServiceResourceId
