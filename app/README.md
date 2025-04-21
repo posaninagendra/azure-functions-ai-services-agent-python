@@ -126,8 +126,9 @@ message = project_client.agents.create_message(
 print(f"Created message, message ID: {message.id}")
 
 # Run the agent
-run = project_client.agents.create_run(thread_id=thread.id, assistant_id=agent.id)
-# Monitor and process the run status. The function call should be placed on the input queue by the Agent service for the Azure Function to pick up when requires_action is returned
+run = project_client.agents.create_run(thread_id=thread.id, agent_id=agent.id)
+# Monitor and process the run status. The function call will be placed on the input queue by the Agent service for the Azure Function to pick up when requires_action is returned
+# The agent will then pick up the message that the queue trigger function returned in the output queue and complete
 while run.status in ["queued", "in_progress", "requires_action"]:
     time.sleep(1)
     run = project_client.agents.get_run(thread_id=thread.id, run_id=run.id)
@@ -144,13 +145,16 @@ print(f"Run finished with status: {run.status}")
 
 ```python
 # Get messages from the assistant thread
-messages = project_client.agents.get_messages(thread_id=thread.id)
+messages = project_client.agents.list_messages(thread_id=thread.id)
 print(f"Messages: {messages}")
 
-# Get the last message from the assistant
-last_msg = messages.get_last_text_message_by_sender("assistant")
-if last_msg:
-    print(f"Last Message: {last_msg.text.value}")
+# Get the last message from the agent
+last_msg = None
+for data_point in messages.data:
+    if data_point.role == "assistant":
+        last_msg = data_point.content[-1]
+        print(f"Last Message: {last_msg.text.value}")
+        break
 
 # Delete the agent once done
 project_client.agents.delete_agent(agent.id)

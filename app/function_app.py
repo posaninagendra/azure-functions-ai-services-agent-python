@@ -92,7 +92,7 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f"Created message, message ID: {message.id}")
 
     # Run the agent
-    run = project_client.agents.create_run(thread_id=thread.id, assistant_id=agent.id)
+    run = project_client.agents.create_run(thread_id=thread.id, agent_id=agent.id)
     # Monitor and process the run status
     while run.status in ["queued", "in_progress", "requires_action"]:
         time.sleep(1)
@@ -106,15 +106,18 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     if run.status == "failed":
         logging.error(f"Run failed: {run.last_error}")
 
-    # Get messages from the assistant thread
-    messages = project_client.agents.get_messages(thread_id=thread.id)
+
+    messages = project_client.agents.list_messages(thread_id=thread.id)
     logging.info(f"Messages: {messages}")
 
-    # Get the last message from the assistant
-    last_msg = messages.get_last_text_message_by_sender("assistant")
-    if last_msg:
-        logging.info(f"Last Message: {last_msg.text.value}")
-
+    # Get the last message from the agent
+    last_msg = None
+    for data_point in messages.data:
+        if data_point.role == "assistant":
+            last_msg = data_point.content[-1]
+            logging.info(f"Last Message: {last_msg.text.value}")
+            break
+ 
     # Delete the agent once done
     project_client.agents.delete_agent(agent.id)
     print("Deleted agent")
@@ -123,18 +126,10 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
 
 # Function to get the weather
 @app.function_name(name="GetWeather")
-@app.queue_trigger(arg_name="msg", queue_name="input", connection="STORAGE_CONNECTION")  
-def process_queue_message(msg: func.QueueMessage) -> None:
+@app.queue_output(arg_name="outputQueueItem",  queue_name=output_queue_name, connection="STORAGE_CONNECTION")
+@app.queue_trigger(arg_name="msg", queue_name=input_queue_name, connection="STORAGE_CONNECTION") 
+def process_queue_message(msg: func.QueueMessage,  outputQueueItem: func.Out[str]) -> None:
     logging.info('Python queue trigger function processed a queue item')
-
-    # Queue to send message to
-    queue_client = QueueClient(
-        os.environ["STORAGE_CONNECTION__queueServiceUri"],
-        queue_name="output",
-        credential=DefaultAzureCredential(),
-        message_encode_policy=BinaryBase64EncodePolicy(),
-        message_decode_policy=BinaryBase64DecodePolicy()
-    )
 
     messagepayload = json.loads(msg.get_body().decode('utf-8'))
     location = messagepayload['location']
@@ -145,6 +140,6 @@ def process_queue_message(msg: func.QueueMessage) -> None:
         'Value': 'Weather is 74 degrees and sunny in ' + location,
         'CorrelationId': correlation_id
     }
-    queue_client.send_message(json.dumps(result_message).encode('utf-8'))
+    outputQueueItem.set(json.dumps(result_message).encode('utf-8'))
 
     logging.info(f"Sent message to queue: {input_queue_name} with message {result_message}")
