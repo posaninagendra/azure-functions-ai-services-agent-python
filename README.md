@@ -60,7 +60,7 @@ azd provision
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "python",
     "STORAGE_CONNECTION__queueServiceUri": "https://<storageaccount>.queue.core.windows.net",
-    "PROJECT_CONNECTION_STRING": "<project connnection for AI Project>",
+    "PROJECT_ENDPOINT": "<project endpoint for AI Project>",
     "AzureWebJobsStorage": "UseDevelopmentStorage=true"
     }
 }
