@@ -5,7 +5,7 @@ import os
 import time
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
-from azure.storage.queue import QueueClient, BinaryBase64EncodePolicy, BinaryBase64DecodePolicy
+from azure.ai.agents.models import AzureFunctionStorageQueue, AzureFunctionTool
 
 app = func.FunctionApp()
 
@@ -16,58 +16,47 @@ output_queue_name = "output"
 
 # Function to initialize the agent client and the tools Azure Functions that the agent can use
 def initialize_client():
-    # Create a project client using the connection string from local.settings.json
-    project_client = AIProjectClient.from_connection_string(
+    # Create a project client using the project endpoint from local.settings.json
+    project_client = AIProjectClient(
         credential=DefaultAzureCredential(),
-        conn_str=os.environ["PROJECT_CONNECTION_STRING"]
+        endpoint=os.environ["PROJECT_ENDPOINT"]
     )
 
     # Get the connection string from local.settings.json
     storage_connection_string = os.environ["STORAGE_CONNECTION__queueServiceUri"]
 
+    # Define the Azure Function tool
+    azure_function_tool = AzureFunctionTool(
+        name="GetWeather",
+        description="Get the weather in a location.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "location": { "type": "string", "description": "The location to look up." },
+            },
+            "required": [ "location" ],
+        },
+        input_queue=AzureFunctionStorageQueue(
+            queue_name=input_queue_name,
+            storage_service_endpoint=storage_connection_string,
+        ),
+        output_queue=AzureFunctionStorageQueue(
+            queue_name=output_queue_name,
+            storage_service_endpoint=storage_connection_string
+        )
+    )
+
     # Create an agent with the Azure Function tool to get the weather
     agent = project_client.agents.create_agent(
-        model="gpt-4o-mini",
+        model="gpt-4.1-mini",
         name="azure-function-agent-get-weather",
         instructions="You are a helpful support agent. Answer the user's questions to the best of your ability.",
-        headers={"x-ms-enable-preview": "true"},
-        tools=[
-            {
-                "type": "azure_function",
-                "azure_function": {
-                    "function": {
-                        "name": "GetWeather",
-                        "description": "Get the weather in a location.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "location": {"type": "string", "description": "The location to look up."}
-                            },
-                            "required": ["location"]
-                        }
-                    },
-                    "input_binding": {
-                        "type": "storage_queue",
-                        "storage_queue": {
-                            "queue_service_uri": storage_connection_string,
-                            "queue_name": input_queue_name
-                        }
-                    },
-                    "output_binding": {
-                        "type": "storage_queue",
-                        "storage_queue": {
-                            "queue_service_uri": storage_connection_string,
-                            "queue_name": output_queue_name
-                        }
-                    }
-                }
-            }
-        ],
+        tools=azure_function_tool.definitions,
     )
     logging.info(f"Created agent, agent ID: {agent.id}")
 
     # Create a thread
-    thread = project_client.agents.create_thread()
+    thread = project_client.agents.threads.create()
     logging.info(f"Created thread, thread ID: {thread.id}")
 
     return project_client, thread, agent
@@ -84,7 +73,7 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     project_client, thread, agent = initialize_client()
 
     # Send the prompt to the agent
-    message = project_client.agents.create_message(
+    message = project_client.agents.messages.create(
         thread_id=thread.id,
         role="user",
         content=prompt,
@@ -92,11 +81,11 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     logging.info(f"Created message, message ID: {message.id}")
 
     # Run the agent
-    run = project_client.agents.create_run(thread_id=thread.id, agent_id=agent.id)
+    run = project_client.agents.runs.create(thread_id=thread.id, agent_id=agent.id)
     # Monitor and process the run status
     while run.status in ["queued", "in_progress", "requires_action"]:
         time.sleep(1)
-        run = project_client.agents.get_run(thread_id=thread.id, run_id=run.id)
+        run = project_client.agents.runs.get(thread_id=thread.id, run_id=run.id)
 
         if run.status not in ["queued", "in_progress", "requires_action"]:
             break
@@ -107,14 +96,14 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
         logging.error(f"Run failed: {run.last_error}")
 
 
-    messages = project_client.agents.list_messages(thread_id=thread.id)
+    messages = project_client.agents.messages.list(thread_id=thread.id)
     logging.info(f"Messages: {messages}")
 
     # Get the last message from the agent
     last_msg = None
-    for data_point in messages.data:
-        if data_point.role == "assistant":
-            last_msg = data_point.content[-1]
+    for data_point in messages:
+        if data_point['role'] == "assistant":
+            last_msg = data_point['content'][-1]
             logging.info(f"Last Message: {last_msg.text.value}")
             break
  
@@ -142,4 +131,4 @@ def process_queue_message(msg: func.QueueMessage,  outputQueueItem: func.Out[str
     }
     outputQueueItem.set(json.dumps(result_message).encode('utf-8'))
 
-    logging.info(f"Sent message to queue: {input_queue_name} with message {result_message}")
+    logging.info(f"Sent message to queue: {output_queue_name} with message {result_message}")
