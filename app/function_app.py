@@ -72,46 +72,54 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
     # Initialize the agent client
     project_client, thread, agent = initialize_client()
 
-    # Send the prompt to the agent
-    message = project_client.agents.messages.create(
-        thread_id=thread.id,
-        role="user",
-        content=prompt,
-    )
-    logging.info(f"Created message, message ID: {message.id}")
+    try:
+        # Send the prompt to the agent
+        message = project_client.agents.messages.create(
+            thread_id=thread.id,
+            role="user",
+            content=prompt,
+        )
+        logging.info(f"Created message, message ID: {message.id}")
 
-    # Run the agent
-    run = project_client.agents.runs.create(thread_id=thread.id, agent_id=agent.id)
-    # Monitor and process the run status
-    while run.status in ["queued", "in_progress", "requires_action"]:
-        time.sleep(1)
-        run = project_client.agents.runs.get(thread_id=thread.id, run_id=run.id)
+        # Run the agent
+        run = project_client.agents.runs.create(thread_id=thread.id, agent_id=agent.id)
+        # Monitor and process the run status
+        while run.status in ["queued", "in_progress", "requires_action"]:
+            time.sleep(1)
+            run = project_client.agents.runs.get(thread_id=thread.id, run_id=run.id)
 
-        if run.status not in ["queued", "in_progress", "requires_action"]:
-            break
+            if run.status not in ["queued", "in_progress", "requires_action"]:
+                break
 
-    logging.info(f"Run finished with status: {run.status}")
+        logging.info(f"Run finished with status: {run.status}")
 
-    if run.status == "failed":
-        logging.error(f"Run failed: {run.last_error}")
+        if run.status == "failed":
+            logging.error(f"Run failed: {run.last_error}")
 
+        messages = project_client.agents.messages.list(thread_id=thread.id)
+        logging.info(f"Messages: {messages}")
 
-    messages = project_client.agents.messages.list(thread_id=thread.id)
-    logging.info(f"Messages: {messages}")
+        # Get the last message from the agent
+        last_msg = None
+        for data_point in messages:
+            if data_point['role'] == "assistant":
+                last_msg = data_point['content'][-1]
+                logging.info(f"Last Message: {last_msg.text.value}")
+                break
+        
+        # Prepare response (moved outside of try-finally to use the last_msg variable)
+        response_text = last_msg.text.value if last_msg else "No response from agent"
+        
+    finally:
+        # Delete the agent once done - this will execute regardless of success or exceptions
+        try:
+            if agent and agent.id:
+                project_client.agents.delete_agent(agent.id)
+                logging.info("Deleted agent")
+        except Exception as cleanup_error:
+            logging.error(f"Error cleaning up agent: {cleanup_error}")
 
-    # Get the last message from the agent
-    last_msg = None
-    for data_point in messages:
-        if data_point['role'] == "assistant":
-            last_msg = data_point['content'][-1]
-            logging.info(f"Last Message: {last_msg.text.value}")
-            break
- 
-    # Delete the agent once done
-    project_client.agents.delete_agent(agent.id)
-    print("Deleted agent")
-
-    return func.HttpResponse(last_msg.text.value)
+    return func.HttpResponse(response_text)
 
 # Function to get the weather
 @app.function_name(name="GetWeather")
