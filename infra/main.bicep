@@ -199,6 +199,12 @@ module storage 'br/public:avm/res/storage/storage-account:0.8.3' = {
     blobServices: {
       containers: [{name: deploymentStorageContainerName}]
     }
+    queueServices: {
+      queues: [
+        { name: 'input' }
+        { name: 'output' }
+      ]
+    }
     minimumTlsVersion: 'TLS1_2'  // Enforcing TLS 1.2 for better security
     location: location
     tags: tags
