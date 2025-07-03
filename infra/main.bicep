@@ -380,6 +380,7 @@ module storagePrivateEndpoint 'app/storage-PrivateEndpoint.bicep' = if (vnetEnab
     enableQueue: storageEndpointConfig.enableQueue
     enableTable: storageEndpointConfig.enableTable
   }
+  dependsOn: [ projectRoleAssignments, rbac, api, aiProjectCapabilityHost, postCapabilityHostCreationRoleAssignments ]
 }
 
 // App outputs
