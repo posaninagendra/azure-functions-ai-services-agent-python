@@ -202,7 +202,7 @@ resource storageQueueDataContributorRoleAssignmentUser 'Microsoft.Authorization/
   properties: {
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleDefinitionId)
     principalId: userPrincipalId
-    principalType: aiProjectPrincipalType
+    principalType: 'User'
   }
 }
 
