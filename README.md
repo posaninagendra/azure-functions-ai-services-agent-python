@@ -91,6 +91,8 @@ azd provision
 ```
 cd app
 
+pip3 install -r requirements.txt
+
 func start
 ```
 1. Send POST `prompt` endpoints respectively using your HTTP test tool. If you have the [RestClient](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension installed, you can **execute requests directly from the [`test.http`](./app/test.http) project file**.
