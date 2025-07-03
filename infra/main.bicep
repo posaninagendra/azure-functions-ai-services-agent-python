@@ -217,7 +217,7 @@ module aiDependencies './agent/standard-dependent-resources.bicep' = {
   scope: rg
   params: {
     location: location
-    storageName: 'st${uniqueSuffix}'
+    storageName: 'stai${uniqueSuffix}'
     aiServicesName: '${aiServicesName}${uniqueSuffix}'
     aiSearchName: '${aiSearchName}${uniqueSuffix}'
     cosmosDbName: '${cosmosDbName}${uniqueSuffix}'
@@ -284,6 +284,9 @@ module api './app/api.bicep' = {
     appSettings: {
       PROJECT_ENDPOINT: aiProject.outputs.projectEndpoint
       STORAGE_CONNECTION__queueServiceUri: 'https://${storage.outputs.name}.queue.${environment().suffixes.storage}'
+      STORAGE_CONNECTION__clientId: apiUserAssignedIdentity.outputs.clientId
+      STORAGE_CONNECTION__credential: 'managedidentity'
+      PROJECT_ENDPOINT__clientId: apiUserAssignedIdentity.outputs.clientId
     }
     virtualNetworkSubnetId: vnetEnabled ? serviceVirtualNetwork.outputs.appSubnetID : ''
   }
@@ -301,6 +304,8 @@ module projectRoleAssignments './agent/standard-ai-project-role-assignments.bice
     aiCosmosDbName: aiDependencies.outputs.cosmosDbAccountName
     aiStorageAccountName: aiDependencies.outputs.storageAccountName
     integrationStorageAccountName: storage.outputs.name
+    functionAppManagedIdentityPrincipalId: apiUserAssignedIdentity.outputs.principalId
+    allowFunctionAppIdentityPrincipal: true // Enable function app identity role assignments
   }
 }
 
@@ -314,8 +319,8 @@ module aiProjectCapabilityHost './agent/standard-ai-project-capability-host.bice
     azureStorageConnection: aiProject.outputs.azureStorageConnection
     cosmosDbConnection: aiProject.outputs.cosmosDbConnection
 
-    accountCapHost: accountCapabilityHostName
-    projectCapHost: projectCapabilityHostName
+    accountCapHost: '${accountCapabilityHostName}${uniqueSuffix}'
+    projectCapHost: '${projectCapabilityHostName}${uniqueSuffix}'
   }
   dependsOn: [ projectRoleAssignments ]
 }
@@ -381,7 +386,6 @@ module storagePrivateEndpoint 'app/storage-PrivateEndpoint.bicep' = if (vnetEnab
     enableQueue: storageEndpointConfig.enableQueue
     enableTable: storageEndpointConfig.enableTable
   }
-  dependsOn: [ projectRoleAssignments, rbac, api, aiProjectCapabilityHost, postCapabilityHostCreationRoleAssignments ]
 }
 
 // App outputs
@@ -391,7 +395,7 @@ output AZURE_TENANT_ID string = tenant().tenantId
 output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
 output SERVICE_API_URI string = 'https://${api.outputs.SERVICE_API_NAME}.azurewebsites.net'
 output AZURE_FUNCTION_APP_NAME string = api.outputs.SERVICE_API_NAME
-output RESOURCE_GROUP string = rg.name
+output RESOURCE_GROUP string = resourceGroupName
 
 // AI Foundry outputs
 output PROJECT_ENDPOINT string = aiProject.outputs.projectEndpoint

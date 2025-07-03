@@ -10,6 +10,10 @@ param aiStorageAccountName string
 
 param integrationStorageAccountName string
 
+// Parameters for function app managed identity
+param functionAppManagedIdentityPrincipalId string = ''
+param allowFunctionAppIdentityPrincipal bool = true // Flag to enable function app identity role assignments
+
 // Assignments for AI Services
 // ------------------------------------------------------------------
 
@@ -203,6 +207,42 @@ resource storageQueueDataContributorRoleAssignmentUser 'Microsoft.Authorization/
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleDefinitionId)
     principalId: userPrincipalId
     principalType: 'User'
+  }
+}
+
+// Assign Function App Managed Identity the Cognitive Services Contributor Role on the AI Services resource
+
+resource cognitiveServicesContributorAssignmentFunctionApp 'Microsoft.Authorization/roleAssignments@2022-04-01'= if (allowFunctionAppIdentityPrincipal && !empty(functionAppManagedIdentityPrincipalId)) {
+  scope: aiServices
+  name: guid(aiServices.id, cognitiveServicesContributorRoleDefinitionId, functionAppManagedIdentityPrincipalId)
+  properties: {  
+    principalId: functionAppManagedIdentityPrincipalId
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesContributorRoleDefinitionId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Assign Function App Managed Identity the Cognitive Services OpenAI User Role on the AI Services resource
+
+resource cognitiveServicesOpenAIUserRoleAssignmentFunctionApp 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (allowFunctionAppIdentityPrincipal && !empty(functionAppManagedIdentityPrincipalId)) {
+  scope: aiServices
+  name: guid(functionAppManagedIdentityPrincipalId, cognitiveServicesOpenAIUserRoleDefinitionId, aiServices.id)
+  properties: {
+    principalId: functionAppManagedIdentityPrincipalId
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAIUserRoleDefinitionId)
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Assign Function App Managed Identity the Cognitive Services User Role on the AI Services resource
+
+resource cognitiveServicesUserRoleAssignmentFunctionApp 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (allowFunctionAppIdentityPrincipal && !empty(functionAppManagedIdentityPrincipalId)) {
+  scope: aiServices
+  name: guid(functionAppManagedIdentityPrincipalId, cognitiveServicesUserRoleDefinitionId, aiServices.id)
+  properties: {
+    principalId: functionAppManagedIdentityPrincipalId
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleDefinitionId)
+    principalType: 'ServicePrincipal'
   }
 }
 
