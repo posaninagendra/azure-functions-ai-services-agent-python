@@ -1,5 +1,7 @@
 param aiProjectPrincipalId string
 param aiProjectPrincipalType string = 'ServicePrincipal' // Workaround for https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-template#new-service-principal
+param userPrincipalId string = ''
+param allowUserIdentityPrincipal bool = false // Flag to enable user identity role assignments
 
 param aiServicesName string
 param aiSearchName string
@@ -54,6 +56,42 @@ resource cognitiveServicesUserRoleAssignment 'Microsoft.Authorization/roleAssign
     principalId: aiProjectPrincipalId
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleDefinitionId)
     principalType: aiProjectPrincipalType
+  }
+}
+
+// Assign AI Project the Cognitive Services Contributor Role on the User Identity Principal on the AI Services resource
+
+resource cognitiveServicesContributorAssignmentUser 'Microsoft.Authorization/roleAssignments@2022-04-01'= if (allowUserIdentityPrincipal && !empty(userPrincipalId)) {
+  scope: aiServices
+  name: guid(aiServices.id, cognitiveServicesContributorRoleDefinitionId, userPrincipalId)
+  properties: {  
+    principalId: userPrincipalId
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesContributorRoleDefinitionId)
+    principalType: 'User'
+  }
+}
+
+// Assign AI Project the Cognitive Services OpenAI User Role on the User Identity Principal on the AI Services resource
+
+resource cognitiveServicesOpenAIUserRoleAssignmentUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (allowUserIdentityPrincipal && !empty(userPrincipalId)){
+  scope: aiServices
+  name: guid(userPrincipalId, cognitiveServicesOpenAIUserRoleDefinitionId, aiServices.id)
+  properties: {
+    principalId: userPrincipalId
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesOpenAIUserRoleDefinitionId)
+    principalType: 'User'
+  }
+}
+
+// Assign AI Project the Cognitive Services User Role on the User Identity Principal on the AI Services resource
+
+resource cognitiveServicesUserRoleAssignmentUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (allowUserIdentityPrincipal && !empty(userPrincipalId)){
+  scope: aiServices
+  name: guid(userPrincipalId, cognitiveServicesUserRoleDefinitionId, aiServices.id)
+  properties: {
+    principalId: userPrincipalId
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', cognitiveServicesUserRoleDefinitionId)
+    principalType: 'User'
   }
 }
 
@@ -152,6 +190,18 @@ resource storageQueueDataContributorRoleAssignment 'Microsoft.Authorization/role
   properties: {
     roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleDefinitionId)
     principalId: aiProjectPrincipalId
+    principalType: aiProjectPrincipalType
+  }
+}
+
+// assignments for User Identity Principal
+
+resource storageQueueDataContributorRoleAssignmentUser 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (allowUserIdentityPrincipal && !empty(userPrincipalId)) {
+  name: guid(integrationStorageAccount.id, userPrincipalId, storageQueueDataContributorRoleDefinitionId)
+  scope: integrationStorageAccount
+  properties: {
+    roleDefinitionId: resourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributorRoleDefinitionId)
+    principalId: userPrincipalId
     principalType: aiProjectPrincipalType
   }
 }

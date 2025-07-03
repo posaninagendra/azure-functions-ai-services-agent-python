@@ -293,6 +293,8 @@ module projectRoleAssignments './agent/standard-ai-project-role-assignments.bice
   scope: rg
   params: {
     aiProjectPrincipalId: aiProject.outputs.aiProjectPrincipalId
+    userPrincipalId: principalId
+    allowUserIdentityPrincipal: true // Enable user identity role assignments
     aiServicesName: aiDependencies.outputs.aiServicesName
     aiSearchName: aiDependencies.outputs.aiSearchName
     aiCosmosDbName: aiDependencies.outputs.cosmosDbAccountName
