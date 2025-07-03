@@ -33,13 +33,29 @@ The [`app`](./app/) folder contains the function code used in this sample while 
 
 ## Prepare your local environment
 
+You can initialize a project from this `azd` template in one of these ways:
+
++ Use this `azd init` command from an empty local (root) folder:
+
+    ```shell
+    azd init --template azure-functions-ai-services-agent-python
+    ```
+
+    Supply an environment name, such as `functionsagentquickstart` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
+
++ Clone the GitHub template repository locally using the `git clone` command:
+
+    ```shell
+    git clone https://github.com/Azure-Samples/azure-functions-ai-services-agent-python.git
+    cd functions-quickstart-typescript-azd
+    ```
+
+    You can also clone the repository from your own fork in GitHub.
+
 ### Create Azure resources for local and cloud dev-test
 
 Once you have your Azure subscription, run the following in a new terminal window to create Azure OpenAI and other resources needed:
 
-```bash
-azd init --template https://github.com/Azure-Samples/azure-functions-ai-services-agent-python
-```
 Mac/Linux:
 ```bash
 chmod +x ./infra/scripts/*.sh 
@@ -71,8 +87,23 @@ azd provision
 1. Open the folder in a new terminal.
 1. Run the `code .` code command to open the project in Visual Studio Code.
 1. In the command palette (F1), type `Azurite: Start`, which enables debugging with local storage for Azure Functions runtime.
-1. Press **Run/Debug (F5)** to run in the debugger. Select **Debug anyway** if prompted about local emulator not running.
-1. Send POST `prompt` endpoints respectively using your HTTP test tool. If you have the [RestClient](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension installed, you can execute requests directly from the [`test.http`](./app/test.http) project file.
+1. Press **Run/Debug (F5)** to run in the debugger. Select **Debug anyway** if prompted about local emulator not running.  Alternatively you can run this in your terminal:
+```
+cd app
+
+pip3 install -r requirements.txt
+
+func start
+```
+1. Send POST `prompt` endpoints respectively using your HTTP test tool. If you have the [RestClient](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension installed, you can **execute requests directly from the [`test.http`](./app/test.http) project file**.
+```http
+POST  http://localhost:7071/api/prompt
+Content-Type: application/json
+
+{
+    "Prompt": "What is the weather in Tacoma, WA?"
+}
+```
 
 
 ## Deploy to Azure
