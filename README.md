@@ -87,8 +87,21 @@ azd provision
 1. Open the folder in a new terminal.
 1. Run the `code .` code command to open the project in Visual Studio Code.
 1. In the command palette (F1), type `Azurite: Start`, which enables debugging with local storage for Azure Functions runtime.
-1. Press **Run/Debug (F5)** to run in the debugger. Select **Debug anyway** if prompted about local emulator not running.
-1. Send POST `prompt` endpoints respectively using your HTTP test tool. If you have the [RestClient](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension installed, you can execute requests directly from the [`test.http`](./app/test.http) project file.
+1. Press **Run/Debug (F5)** to run in the debugger. Select **Debug anyway** if prompted about local emulator not running.  Alternatively you can run this in your terminal:
+```
+cd app
+
+func start
+```
+1. Send POST `prompt` endpoints respectively using your HTTP test tool. If you have the [RestClient](https://marketplace.visualstudio.com/items?itemName=humao.rest-client) extension installed, you can **execute requests directly from the [`test.http`](./app/test.http) project file**.
+```http
+POST  http://localhost:7071/api/prompt
+Content-Type: application/json
+
+{
+    "Prompt": "What is the weather in Tacoma, WA?"
+}
+```
 
 
 ## Deploy to Azure
