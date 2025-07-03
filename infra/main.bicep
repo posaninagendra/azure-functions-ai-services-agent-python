@@ -283,6 +283,7 @@ module api './app/api.bicep' = {
     identityClientId: apiUserAssignedIdentity.outputs.clientId
     appSettings: {
       PROJECT_ENDPOINT: aiProject.outputs.projectEndpoint
+      STORAGE_CONNECTION__queueServiceUri: 'https://${storage.outputs.name}.queue.${environment().suffixes.storage}'
     }
     virtualNetworkSubnetId: vnetEnabled ? serviceVirtualNetwork.outputs.appSubnetID : ''
   }
@@ -390,7 +391,7 @@ output AZURE_TENANT_ID string = tenant().tenantId
 output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
 output SERVICE_API_URI string = 'https://${api.outputs.SERVICE_API_NAME}.azurewebsites.net'
 output AZURE_FUNCTION_APP_NAME string = api.outputs.SERVICE_API_NAME
-output RESOURCE_GROUP string = resourceGroupName
+output RESOURCE_GROUP string = rg.name
 
 // AI Foundry outputs
 output PROJECT_ENDPOINT string = aiProject.outputs.projectEndpoint
