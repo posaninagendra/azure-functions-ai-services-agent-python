@@ -2,7 +2,7 @@
 
 name: azure-functions-ai-services-agent-python
 metadata:
-  template: azure-functions-ai-services-agent-python
+  template: azure-functions-ai-services-agent-python@1.0.1
 services:
   api:
     project: ./app/
