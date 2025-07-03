@@ -17,10 +17,23 @@ output_queue_name = "output"
 # Function to initialize the agent client and the tools Azure Functions that the agent can use
 def initialize_client():
     # Create a project client using the project endpoint from local.settings.json
+    # Check if we have a user-assigned managed identity client ID
+    managed_identity_client_id = os.environ.get("PROJECT_ENDPOINT__clientId")
+    
+    if managed_identity_client_id:
+        # Use user-assigned managed identity
+        credential = DefaultAzureCredential(managed_identity_client_id=managed_identity_client_id)
+        logging.info(f"Using user-assigned managed identity with client ID: {managed_identity_client_id}")
+    else:
+        # Use default credential chain (for local development)
+        credential = DefaultAzureCredential()
+        logging.info("Using default credential chain")
+    
     project_client = AIProjectClient(
-        credential=DefaultAzureCredential(),
+        credential=credential,
         endpoint=os.environ["PROJECT_ENDPOINT"]
     )
+    logging.info("Successfully created AI Project client")
 
     # Get the connection string from local.settings.json
     storage_connection_string = os.environ["STORAGE_CONNECTION__queueServiceUri"]

@@ -15,20 +15,11 @@ Start by defining an Azure Function queue trigger function that will process fun
 # Function to get the weather from an Azure Storage queue where the AI Agent will send function call information
 # It returns the mock weather to an output queue with the correlation id for the AI Agent service to pick up the result of the function call
 @app.function_name(name="GetWeather")
-@app.queue_trigger(arg_name="msg", queue_name="input", connection="STORAGE_CONNECTION")  
-def process_queue_message(msg: func.QueueMessage) -> None:
+@app.queue_output(arg_name="outputQueueItem",  queue_name="output", connection="STORAGE_CONNECTION")
+@app.queue_trigger(arg_name="msg", queue_name="input", connection="STORAGE_CONNECTION") 
+def process_queue_message(msg: func.QueueMessage,  outputQueueItem: func.Out[str]) -> None:
     logging.info('Python queue trigger function processed a queue item')
 
-    # Queue to send message to
-    queue_client = QueueClient(
-        os.environ["STORAGE_CONNECTION__queueServiceUri"],
-        queue_name="output",
-        credential=DefaultAzureCredential(),
-        message_encode_policy=BinaryBase64EncodePolicy(),
-        message_decode_policy=BinaryBase64DecodePolicy()
-    )
-
-    # Get the content of the function call message
     messagepayload = json.loads(msg.get_body().decode('utf-8'))
     location = messagepayload['location']
     correlation_id = messagepayload['CorrelationId']
@@ -38,9 +29,9 @@ def process_queue_message(msg: func.QueueMessage) -> None:
         'Value': 'Weather is 74 degrees and sunny in ' + location,
         'CorrelationId': correlation_id
     }
-    queue_client.send_message(json.dumps(result_message).encode('utf-8'))
+    outputQueueItem.set(json.dumps(result_message).encode('utf-8'))
 
-    logging.info(f"Sent message to output queue with message {result_message}")
+    logging.info(f"Sent message to queue output with message {result_message}")
 ```
 
 ---
@@ -53,9 +44,9 @@ In the sample below we create a client and an agent that has the tools definitio
 # Initialize the client and create agent for the tools Azure Functions that the agent can use
 
 # Create a project client
-project_client = AIProjectClient.from_connection_string(
+project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
-    conn_str=os.environ["PROJECT_CONNECTION_STRING"]
+    endpoint=os.environ["PROJECT_ENDPOINT"]
 )
 
 # Get the connection string for the storage account to send and receive the function calls to the queues
