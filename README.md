@@ -33,13 +33,29 @@ The [`app`](./app/) folder contains the function code used in this sample while 
 
 ## Prepare your local environment
 
+You can initialize a project from this `azd` template in one of these ways:
+
++ Use this `azd init` command from an empty local (root) folder:
+
+    ```shell
+    azd init --template azure-functions-ai-services-agent-python
+    ```
+
+    Supply an environment name, such as `functionsagentquickstart` when prompted. In `azd`, the environment is used to maintain a unique deployment context for your app.
+
++ Clone the GitHub template repository locally using the `git clone` command:
+
+    ```shell
+    git clone https://github.com/Azure-Samples/azure-functions-ai-services-agent-python.git
+    cd functions-quickstart-typescript-azd
+    ```
+
+    You can also clone the repository from your own fork in GitHub.
+
 ### Create Azure resources for local and cloud dev-test
 
 Once you have your Azure subscription, run the following in a new terminal window to create Azure OpenAI and other resources needed:
 
-```bash
-azd init --template https://github.com/Azure-Samples/azure-functions-ai-services-agent-python
-```
 Mac/Linux:
 ```bash
 chmod +x ./infra/scripts/*.sh 
