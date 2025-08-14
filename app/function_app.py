@@ -40,14 +40,16 @@ def initialize_client():
 
     # Define the Azure Function tool
     azure_function_tool = AzureFunctionTool(
-        name="GetWeather",
-        description="Get the weather in a location.",
+        name="FileManager",
+        description="Manage files in Azure Storage.",
         parameters={
             "type": "object",
             "properties": {
-                "location": { "type": "string", "description": "The location to look up." },
+                "fileName": { "type": "string", "description": "The name of the file to manage." },
+                "command": { "type": "string", "description": "The command to execute on the file." },
+                "mode": { "type": "string", "description": "The mode of the tool behavior." },
             },
-            "required": [ "location" ],
+            "required": [ "fileName", "command", "mode" ],
         },
         input_queue=AzureFunctionStorageQueue(
             queue_name=input_queue_name,
@@ -59,11 +61,11 @@ def initialize_client():
         )
     )
 
-    # Create an agent with the Azure Function tool to get the weather
+    # Create an agent with the Azure Function tool to manage files
     agent = project_client.agents.create_agent(
         model="gpt-4.1-mini",
-        name="azure-function-agent-get-weather",
-        instructions="You are a helpful support agent. Answer the user's questions to the best of your ability.",
+        name="azure-function-agent-file-manager",
+        instructions="You are a helpful support agent. Executes file management tasks.",
         tools=azure_function_tool.definitions,
     )
     logging.info(f"Created agent, agent ID: {agent.id}")
@@ -134,22 +136,47 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
 
     return func.HttpResponse(response_text)
 
-# Function to get the weather
-@app.function_name(name="GetWeather")
+# Function to manage files
+@app.function_name(name="FileManager")
 @app.queue_output(arg_name="outputQueueItem",  queue_name=output_queue_name, connection="STORAGE_CONNECTION")
 @app.queue_trigger(arg_name="msg", queue_name=input_queue_name, connection="STORAGE_CONNECTION") 
 def process_queue_message(msg: func.QueueMessage,  outputQueueItem: func.Out[str]) -> None:
     logging.info('Python queue trigger function processed a queue item')
 
     messagepayload = json.loads(msg.get_body().decode('utf-8'))
-    location = messagepayload['location']
+    file_name = messagepayload['fileName']
+    command = messagepayload['command']
+    mode = messagepayload['mode']
     correlation_id = messagepayload['CorrelationId']
 
-    # Send message to queue. Sends a mock message for the weather
-    result_message = {
-        'Value': 'Weather is 74 degrees and sunny in ' + location,
-        'CorrelationId': correlation_id
-    }
+    if mode == "dry_run":
+        logging.info(f"Dry run mode activated for file: {file_name}")
+        result_message = {
+            'Value': 'Simulated file operation for ' + file_name,
+            'CorrelationId': correlation_id
+        }
+    else:
+        # Send message to queue. Sends a mock message for the file operation
+        if command == "delete":
+            logging.info(f"Deleting file: {file_name}")
+            # Here you would add the logic to delete the file
+            result_message = {
+                'Value': 'Deleted file ' + file_name,
+                'CorrelationId': correlation_id
+            }
+        elif command == "create":
+            logging.info(f"Creating file: {file_name}")
+            # Here you would add the logic to create the file
+            result_message = {
+                'Value': 'Created file ' + file_name,
+                'CorrelationId': correlation_id
+            }
+        else:
+            result_message = {
+                'Value': 'Not supported operation for ' + file_name,
+                'CorrelationId': correlation_id
+            }
+
     outputQueueItem.set(json.dumps(result_message).encode('utf-8'))
 
     logging.info(f"Sent message to queue: {output_queue_name} with message {result_message}")
