@@ -140,7 +140,7 @@ def prompt(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="FileManager")
 @app.queue_output(arg_name="outputQueueItem",  queue_name=output_queue_name, connection="STORAGE_CONNECTION")
 @app.queue_trigger(arg_name="msg", queue_name=input_queue_name, connection="STORAGE_CONNECTION") 
-def process_queue_message(msg: func.QueueMessage,  outputQueueItem: func.Out[str]) -> None:
+def process_file_manager(msg: func.QueueMessage,  outputQueueItem: func.Out[str]) -> None:
     logging.info('Python queue trigger function processed a queue item')
 
     messagepayload = json.loads(msg.get_body().decode('utf-8'))
